@@ -15,7 +15,7 @@ train_samples, validation_samples = train_test_split(lines, test_size = 0.2)
 def generator(samples, batch_size = 1024):
     num_samples = len(samples)
     while 1:
-        sklearn.util.shuffle(samples)
+        sklearn.utils.shuffle(samples)
         for offset in range(0, num_samples, batch_size):
             batch_samples = samples[offset : offset+batch_size]
 
@@ -38,9 +38,9 @@ def generator(samples, batch_size = 1024):
                 image_center = cv2.imread(center_path)
                 image_left = cv2.imread(left_path)
                 image_right = cv2.imread(right_path)
-                center_images.append(center_image)
-                left_images.append(left_image)
-                right_images.append(right_image)
+                center_images.append(image_center)
+                left_images.append(image_left)
+                right_images.append(image_right)
                 center_measurement = float(batch_sample[3])
             
                 correction = 0.1 + center_measurement * center_measurement / 0.45;
@@ -83,7 +83,7 @@ from keras.layers.pooling import MaxPooling2D
 
 model = Sequential()
 #Crop
-model.add(Cropping2D(cropping = ((70, 25), (0, 0))), input_shape = (160, 320, 3))
+model.add(Cropping2D(cropping = ((70, 25), (0, 0)), input_shape = (160, 320, 3)))
 #Normalize 
 model.add(Lambda(lambda x: (x / 255.0) - 0.5))
 #Nvidia NN
@@ -95,7 +95,7 @@ model.add(Convolution2D(64,3,3, activation = 'relu'))
 model.add(Flatten())
 model.add(Dense(100))
 model.add(Dense(50))
-model.ad((Dense(10))
+model.add(Dense(10))
 model.add(Dense(1))
 
 model.compile(loss='mse', optimizer='adam')
