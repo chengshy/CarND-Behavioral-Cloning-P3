@@ -1,3 +1,4 @@
 *.DS_Store
 recorded_data
+carnd_data
 model.h5
