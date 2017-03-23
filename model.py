@@ -42,6 +42,11 @@ def generator(samples, batch_size = 1024):
                 image_center = cv2.imread(center_path)
                 image_left = cv2.imread(left_path)
                 image_right = cv2.imread(right_path)
+
+i               # Convert to YUV
+                image_center = cv2.cvtColor(image_center, cv2.COLOR_BGR2YUV)
+                image_left = cv2.cvtColor(image_left, cv2.COLOR_BGR2YUV)
+                image_right = cv2.cvtColor(image_right, cv2.COLOR_BGR2YUV)
                 center_images.append(image_center)
                 left_images.append(image_left)
                 right_images.append(image_right)
