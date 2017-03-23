@@ -9,8 +9,12 @@ with open('./recorded_data/driving_log.csv', 'r') as csvfile:
     for line in reader:
         lines.append(line)
 
+print('Dataset has %d data' % len(lines))
+
 from sklearn.model_selection import train_test_split
 train_samples, validation_samples = train_test_split(lines, test_size = 0.2)
+print('Original Train data size is %d' % len(train_samples))
+print('Original Validation data size is %d' % len(validation_samples))
 
 def generator(samples, batch_size = 1024):
     num_samples = len(samples)
@@ -72,7 +76,7 @@ def generator(samples, batch_size = 1024):
             y_train = np.array(augmented_measurements)
             yield sklearn.utils.shuffle(X_train, y_train)
 
-BATCH_SIZE  = 1024
+BATCH_SIZE  = 128
 train_generator = generator(train_samples, batch_size = BATCH_SIZE)
 validation_generator = generator(validation_samples, batch_size = BATCH_SIZE)
 
@@ -99,7 +103,7 @@ model.add(Dense(10))
 model.add(Dense(1))
 
 model.compile(loss='mse', optimizer='adam')
-model.fit_generator(train_generator, samples_per_epoch = len(train_samples),
+model.fit_generator(train_generator, samples_per_epoch = 6 * len(train_samples),
     validation_data = validation_generator, 
     nb_val_samples = len(validation_samples), nb_epoch = 5,
     verbose = 1)
