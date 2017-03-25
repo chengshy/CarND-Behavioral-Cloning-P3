@@ -1,6 +1,10 @@
 *.DS_Store
 recorded_data
 carnd_data
-recovery_data
-model.h5
 all_data
+floyd_proj
+turn_data
+*.zip
+recovery_data
+second_data
+*.h5
