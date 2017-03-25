@@ -15,6 +15,8 @@ def get_filenames(path_prefix, log_name):
 path_prefix = './all_data/'
 lines_turn = get_filenames(path_prefix, 'driving_log_turn.csv')
 lines_first = get_filenames(path_prefix, 'driving_log_first_track.csv')
+sklearn.utils.shuffle(lines_first)
+lines_first = lines_first[: int(len(lines_first) / 4)]
 lines_second = get_filenames(path_prefix, 'driving_log_second_track.csv')
 lines_recovery = get_filenames(path_prefix, 'driving_log_recovery.csv')
 
@@ -28,7 +30,7 @@ train_samples, validation_samples = train_test_split(lines, test_size = 0.2)
 print('Original Train data size is %d' % len(train_samples))
 print('Original Validation data size is %d' % len(validation_samples))
 
-def generator(samples, batch_size = 1024):
+def generator(samples, batch_size = 1024, use_left_right = False):
     num_samples = len(samples)
     while 1:
         sklearn.utils.shuffle(samples)
@@ -49,28 +51,26 @@ def generator(samples, batch_size = 1024):
                 filename_left = left_path.split('/')[-1]
                 filename_right = right_path.split('/')[-1]
                 center_path = './all_data/IMG/' + filename_center
-                left_path = './all_data/IMG/' + filename_left
-                right_path = './all_data/IMG/' + filename_right
                 image_center = cv2.imread(center_path)
-                image_left = cv2.imread(left_path)
-                image_right = cv2.imread(right_path)
-
-                # YUV
                 image_center = cv2.cvtColor(image_center, cv2.COLOR_BGR2YUV)
-                image_left = cv2.cvtColor(image_left, cv2.COLOR_BGR2YUV)
-                image_right = cv2.cvtColor(image_right, cv2.COLOR_BGR2YUV)
-
                 center_images.append(image_center)
-                left_images.append(image_left)
-                right_images.append(image_right)
                 center_measurement = float(batch_sample[3])
-                correction = 0.1 + center_measurement * center_measurement / 0.45;
-                left_measurement = center_measurement + correction
-                right_measurement = center_measurement - correction
-            
                 center_measurements.append(center_measurement)
-                left_measurements.append(left_measurement)
-                right_measurements.append(right_measurement)
+
+                if use_left_right:
+                    left_path = './all_data/IMG/' + filename_left
+                    right_path = './all_data/IMG/' + filename_right
+                    image_left = cv2.imread(left_path)
+                    image_right = cv2.imread(right_path)
+                    image_left = cv2.cvtColor(image_left, cv2.COLOR_BGR2YUV)
+                    image_right = cv2.cvtColor(image_right, cv2.COLOR_BGR2YUV)
+                    left_images.append(image_left)
+                    right_images.append(image_right)
+                    correction = 0.2 + center_measurement * center_measurement / 0.45;
+                    left_measurement = center_measurement + correction
+                    right_measurement = center_measurement - correction
+                    left_measurements.append(left_measurement)
+                    right_measurements.append(right_measurement)
             
             assert(len(center_images) == len(center_measurements))
             assert(len(left_images) == len(left_measurements))
@@ -94,8 +94,9 @@ def generator(samples, batch_size = 1024):
             yield sklearn.utils.shuffle(X_train, y_train)
 
 BATCH_SIZE  = 128
-train_generator = generator(train_samples, batch_size = BATCH_SIZE)
-validation_generator = generator(validation_samples, batch_size = BATCH_SIZE)
+use_left_right = True
+train_generator = generator(train_samples, batch_size = BATCH_SIZE, use_left_right = use_left_right)
+validation_generator = generator(validation_samples, batch_size = BATCH_SIZE, use_left_right = use_left_right)
 
 from keras.models import Sequential
 from keras.layers import Flatten, Dense, Lambda, Cropping2D, Dropout, Activation
@@ -110,15 +111,10 @@ model.add(Cropping2D(cropping = ((55, 25), (0, 0)), input_shape = (160, 320, 3))
 model.add(Lambda(lambda x: (x / 255.0) - 0.5))
 #Nvidia NN
 model.add(Convolution2D(24,5,5, subsample = (2,2), activation = 'tanh'))
-model.add(Dropout(0.5))
 model.add(Convolution2D(36,5,5, subsample = (2,2), activation = 'tanh'))
-model.add(Dropout(0.5))
 model.add(Convolution2D(48,5,5, subsample = (2,2), activation = 'tanh'))
-model.add(Dropout(0.5))
 model.add(Convolution2D(64,3,3, activation = 'tanh'))
-model.add(Dropout(0.5))
 model.add(Convolution2D(64,3,3, activation = 'tanh'))
-model.add(Dropout(0.5))
 model.add(Flatten())
 model.add(Activation('tanh'))
 model.add(Dropout(0.5))
@@ -135,7 +131,9 @@ checkpointer = ModelCheckpoint(filepath="/tmp/weights.h5", verbose=1, save_best_
 
 earlystop = EarlyStopping()
 
-model.fit_generator(train_generator, samples_per_epoch = 6 * len(train_samples),
+samples_num = 6 * len(train_samples) if use_left_right else 2 * len(train_samples)
+
+model.fit_generator(train_generator, samples_per_epoch = samples_num,
     validation_data = validation_generator, 
     nb_val_samples = len(validation_samples), nb_epoch = 5,
     verbose = 1,
