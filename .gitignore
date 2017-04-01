@@ -7,4 +7,4 @@ turn_data
 *.zip
 recovery_data
 second_data
-*.h5
+.ipynb_checkpoints
